@@ -29,6 +29,8 @@ public class GlobeSortClient {
 
     private String serverStr;
 
+    private static double serverTime;
+
     public GlobeSortClient(String ip, int port) {
         this.serverChannel = ManagedChannelBuilder.forAddress(ip, port)
 				.maxInboundMessageSize(MAX_MESSAGE_SIZE)
@@ -39,13 +41,24 @@ public class GlobeSortClient {
     }
 
     public void run(Integer[] values) throws Exception {
+        // The Ping
         System.out.println("Pinging " + serverStr + "...");
-        serverStub.ping(Empty.newBuilder().build());
-        System.out.println("Ping successful.");
+        long startTime = System.currentTimeMillis();
 
+        serverStub.ping(Empty.newBuilder().build());
+
+        long endTime = System.currentTimeMillis();
+        System.out.println("Ping successful");
+        System.out.println("Ping milliseconds :::"+(endTime - startTime));
+
+        // The Sort
         System.out.println("Requesting server to sort array");
         IntArray request = IntArray.newBuilder().addAllValues(Arrays.asList(values)).build();
+
         IntArray response = serverStub.sortIntegers(request);
+
+        serverTime =  (double) response.getTimeDuration()/1000;
+
         System.out.println("Sorted array");
     }
 
@@ -83,6 +96,9 @@ public class GlobeSortClient {
     }
 
     public static void main(String[] args) throws Exception {
+
+        long startTime = System.currentTimeMillis();
+
         Namespace cmd_args = parseArgs(args);
         if (cmd_args == null) {
             throw new RuntimeException("Argument parsing failed");
@@ -96,5 +112,10 @@ public class GlobeSortClient {
         } finally {
             client.shutdown();
         }
+        long endTime = System.currentTimeMillis();
+        double appTime =  (double) (endTime - startTime)/1000.0;
+        System.out.println("Application Time seconds :::" + appTime);
+        System.out.println("Network Time seconds :::" + ((appTime - serverTime)/2.0));
+        System.out.println("integer per second :::" + cmd_args.getInt("num_values")/appTime);
     }
 }
